@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Translation working files
+*.translation-cache.json
+*.missing.txt
+batch-*.json
+batch-*.patch.json
+diagnosis.json
+
+# QA renders
+qa/
+box-preview/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Virtual environment
+venv/
+.venv/
+env/
