@@ -1,0 +1,49 @@
+{
+  "_comment": "Example glossary for a financial research report. Copy and adapt per document.",
+  "exact": {
+    "Goldman Sachs": "Goldman Sachs",
+    "J.P. Morgan": "J.P. Morgan",
+    "Morgan Stanley": "Morgan Stanley",
+    "Overweight": "增持",
+    "Underweight": "减持",
+    "Equal-weight": "持有",
+    "Buy": "买入",
+    "Sell": "卖出",
+    "Hold": "持有",
+    "Revenue": "营收",
+    "EBITDA": "EBITDA",
+    "EPS": "每股收益",
+    "P/E": "市盈率",
+    "YoY": "同比",
+    "QoQ": "环比",
+    "FY2024": "FY2024",
+    "FY2025E": "FY2025E"
+  },
+  "keep_as_source": [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "TSLA",
+    "NVDA",
+    "NYSE",
+    "NASDAQ",
+    "S&P 500",
+    "iPhone",
+    "iPad",
+    "MacBook",
+    "Azure",
+    "AWS",
+    "GPT-4",
+    "Claude"
+  ],
+  "replacements": [],
+  "bad_terms": [
+    "互联网档案馆",
+    "中文(简体)",
+    "英语:",
+    "第三、第三",
+    "流行音乐节",
+    "拉布邦"
+  ]
+}
