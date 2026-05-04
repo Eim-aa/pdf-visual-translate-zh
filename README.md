@@ -1,192 +1,180 @@
-# PDF Visual Translate ZH
+# PDF 视觉翻译中文工具
 
-**Visually faithful English-to-Chinese PDF translation that preserves layout, tables, charts, colors, and page geometry.**
+**面向中文用户的英文 PDF 版式保真翻译工具：把英文报告、研报、白皮书、披露文件等转换为中文 PDF，同时尽量保持页面尺寸、页数、表格、图表、配色和版面结构不变。**
 
-[中文说明](#中文说明) | [English](#english)
+[English README](README.en.md) | [高级参考](REFERENCE.md) | [QA 检查清单](references/pdf-translation-qa.md)
 
 ---
 
-## 中文说明
+## 这是什么
 
-### 这是什么
+这是一个 PDF 视觉翻译工作流。它不尝试把 PDF 重新排版成一个全新的文档，而是在原 PDF 的视觉层上工作：提取英文文本和坐标，采样局部背景色覆盖原文，再把简洁中文绘制回相同位置。
 
-一个 PDF 视觉翻译工具，把英文 PDF 翻译成中文，同时保持原文档的视觉外观——页面尺寸、页数、表格、图表、配色、页眉页脚全部不变。
+它适合这类材料：
 
-与传统翻译工具不同，本工具采用**视觉覆盖**方式：在原 PDF 上采样局部背景色，覆盖英文文本，再在相同坐标绘制中文。适合报告、研报、白皮书、披露文件等对排版有要求的场景。
+- 金融研报、行业报告、公司公告、披露文件
+- 带大量表格、图表、页眉页脚和脚注的 PDF
+- 需要中文可读性，但又不能破坏原版式的资料
+- 需要用 LLM 分批翻译，并保留术语表、缓存和 QA 记录的大型 PDF
 
-### 工作原理
+## 设计取舍
 
+这个项目优先保证“看起来像原 PDF 的中文版本”，不是优先生成一个干净、可搜索、可复制的中文文本层。
+
+- **版式保真**：页数、页面尺寸、表格、图表、颜色和页眉页脚尽量保持不变。
+- **视觉覆盖**：原英文通常仍在底层文本层中，复制或搜索时可能看到英文。
+- **LLM 优先**：脚本负责导出批次、合并缓存和重建 PDF；翻译本身交给你选择的 LLM。
+- **文件化状态**：翻译缓存、术语表、批次文件和 QA 输出都落到磁盘，适合长文档反复迭代。
+- **术语保护**：品牌名、股票代码、产品名、数据源、URL、邮箱、数字和短代码默认倾向保留。
+
+## 工作流程
+
+```text
+英文 PDF
+  -> 预检诊断
+  -> 提取文本和坐标
+  -> 导出翻译批次
+  -> LLM 翻译为 patch JSON
+  -> 合并翻译缓存
+  -> 视觉覆盖重建
+  -> 渲染对照图 QA
+  -> 中文 PDF
 ```
-英文 PDF → 预检诊断 → 提取文本坐标 → 分批导出 → LLM 翻译 → 合并缓存 → 视觉覆盖重建 → QA 验证 → 中文 PDF
-```
 
-核心设计：
-- **不破坏原始 PDF**：以原文件为视觉底层，在上方覆盖翻译
-- **LLM 优先翻译**：导出紧凑批次给 AI 翻译，而非机器翻译
-- **文件级状态管理**：翻译缓存、术语表、批次文件持久化在磁盘上，不依赖聊天上下文
-- **智能保留**：自动识别品牌名、股票代码、产品名等应保留英文的内容
+## 安装
 
-### 快速开始
-
-**安装依赖：**
+建议使用 Python 3.10 或更新版本。
 
 ```bash
-pip install pymupdf pillow
+pip install -r requirements.txt
 ```
 
-**1. 诊断 PDF：**
+当前核心依赖：
+
+```text
+pymupdf
+pillow
+```
+
+## 快速开始
+
+### 1. 诊断 PDF
 
 ```bash
 python3 scripts/diagnose_pdf.py --source your-report.pdf
 ```
 
-**2. 导出翻译批次：**
+如果诊断显示文本密度很低，通常说明 PDF 是扫描件或图片型 PDF，需要先 OCR。
+
+### 2. 准备术语表和缓存
+
+```bash
+WORK="/tmp/pdf-visual-translate-zh"
+mkdir -p "$WORK"
+cp references/glossary-template.json "$WORK/glossary.json"
+```
+
+### 3. 导出第一个翻译批次
 
 ```bash
 python3 scripts/visual_translate_pdf.py \
   --source your-report.pdf \
-  --glossary references/glossary-template.json \
-  --cache /tmp/translations.json \
-  --export-batch /tmp/batch-001.json \
-  --batch-index 0 --batch-size 60
+  --glossary "$WORK/glossary.json" \
+  --cache "$WORK/translations.json" \
+  --export-batch "$WORK/batch-001.json" \
+  --batch-index 0 \
+  --batch-size 60 \
+  --context-chars 1000
 ```
 
-**3. 翻译批次内容**（使用任何 LLM），生成 patch JSON：
+### 4. 用 LLM 翻译批次
+
+把批次里的 `items` 翻译成 patch JSON。键必须保持英文原文完全一致，值写中文译文：
 
 ```json
 {
-  "Original English text": "对应的中文翻译"
+  "Exact English source string": "简洁、准确、能放回原坐标的中文"
 }
 ```
 
-**4. 合并翻译并重建：**
+### 5. 合并翻译补丁
 
 ```bash
-# 合并翻译
 python3 scripts/visual_translate_pdf.py \
   --source your-report.pdf \
-  --cache /tmp/translations.json \
-  --merge-patch /tmp/batch-001.patch.json
+  --cache "$WORK/translations.json" \
+  --merge-patch "$WORK/batch-001.patch.json"
+```
 
-# 重建中文 PDF
+继续用 `--batch-index 0` 导出下一批。脚本会跳过已经有翻译的缓存项，所以索引 `0` 表示“下一批未翻译内容”。
+
+### 6. 重建中文 PDF
+
+```bash
 python3 scripts/visual_translate_pdf.py \
   --source your-report.pdf \
-  --output /tmp/output-zh.pdf \
-  --cache /tmp/translations.json \
-  --glossary references/glossary-template.json \
-  --render-dir /tmp/qa \
+  --output "$WORK/output-zh.pdf" \
+  --cache "$WORK/translations.json" \
+  --glossary "$WORK/glossary.json" \
+  --render-dir "$WORK/qa" \
   --compare-pages 1,4,8
 ```
 
-### 项目结构
+`--render-dir` 会输出对照渲染图，建议在交付前检查封面、正文页、密集表格页、图表页和法律/披露页。
 
-```
+## 项目结构
+
+```text
 pdf-visual-translate-zh/
-├── README.md                          # 本文件
-├── SKILL.md                           # Cowork/Claude skill 定义
-├── REFERENCE.md                       # 高级场景参考（OCR、修复、表单等）
+├── README.md                          # 中文默认说明
+├── README.en.md                       # English README
+├── SKILL.md                           # 中文 Skill 使用说明
+├── SKILL.en.md                        # English Skill guide
+├── REFERENCE.md                       # 中文高级参考
+├── REFERENCE.en.md                    # English advanced reference
 ├── requirements.txt                   # Python 依赖
 ├── scripts/
-│   ├── visual_translate_pdf.py        # 核心翻译引擎（导出、合并、重建）
+│   ├── visual_translate_pdf.py        # 核心引擎：导出、合并、重建
 │   ├── diagnose_pdf.py                # PDF 预检诊断
 │   └── render_text_box_preview.py     # 文本框可视化预览
 ├── references/
 │   ├── glossary-template.json         # 术语表模板
-│   └── pdf-translation-qa.md          # QA 检查清单与常见问题
+│   ├── pdf-translation-qa.md          # 中文 QA 检查清单
+│   └── pdf-translation-qa.en.md       # English QA checklist
 └── examples/
-    └── glossary-example.json          # 术语表使用示例
+    └── glossary-example.json          # 术语表示例
 ```
 
-### 脚本说明
+## 脚本说明
 
-| 脚本 | 用途 |
-|------|------|
-| `diagnose_pdf.py` | 预检：检测文本密度、扫描件、加密、表单、注释、旋转页等 |
-| `visual_translate_pdf.py --inspect` | 查看 PDF 元数据（页数、尺寸、字体） |
-| `visual_translate_pdf.py --export-batch` | 导出紧凑翻译批次供 LLM 翻译 |
-| `visual_translate_pdf.py --merge-patch` | 将翻译补丁合并到缓存 |
-| `visual_translate_pdf.py --output` | 重建中文覆盖 PDF |
-| `render_text_box_preview.py` | 渲染文本框预览图（绿色=已翻译，橙色=待翻译） |
+| 脚本或命令 | 用途 |
+|---|---|
+| `scripts/diagnose_pdf.py` | 预检 PDF：文本密度、扫描件、加密、表单、注释、旋转页、混合页面尺寸等 |
+| `scripts/visual_translate_pdf.py --inspect` | 查看面向翻译的 PDF 元数据 |
+| `scripts/visual_translate_pdf.py --export-batch` | 导出紧凑翻译批次，供 LLM 翻译 |
+| `scripts/visual_translate_pdf.py --merge-patch` | 把一个 patch JSON 合并进翻译缓存 |
+| `scripts/visual_translate_pdf.py --output` | 根据缓存重建中文覆盖 PDF |
+| `scripts/render_text_box_preview.py` | 渲染文本框预览图，检查哪些文字会被覆盖和翻译 |
 
-### 作为 Cowork Skill 使用
+## 作为 Skill 使用
 
-本项目可以作为 Claude Cowork 的 skill 使用。将整个文件夹复制到 `~/.claude/skills/pdf-visual-translate-zh-enhanced/` 即可：
+这个仓库也可以作为 Claude/Codex 一类智能体的 PDF 翻译 Skill 使用。把整个文件夹放到对应的 skills 目录后，按 `SKILL.md` 的工作流执行即可。
+
+示例：
 
 ```bash
 mkdir -p ~/.claude/skills/pdf-visual-translate-zh-enhanced
 cp -r . ~/.claude/skills/pdf-visual-translate-zh-enhanced/
 ```
 
-重启 Cowork 后，skill 会自动加载。
+## 常见限制
 
-### 局限性
+- **隐藏文本层仍可能是英文**：可视输出是中文，但复制和搜索可能仍命中英文原文。
+- **扫描件需要 OCR**：纯图片 PDF 不能直接靠文本坐标覆盖，需要先生成文本层。
+- **表单字段不会自动改写**：AcroForm 字段值需要单独检查。
+- **注释内容不会自动翻译**：弹出式注释、批注和附件元数据不属于页面文本覆盖范围。
+- **长文本可能需要人工压缩**：中文必须能放回原坐标，密集表格和脚注尤其需要简短译文。
 
-- **覆盖模式**：隐藏的文本层仍为英文，复制/搜索时会看到英文原文
-- **扫描件**：纯图片 PDF 需先 OCR 再使用本工具
-- **表单字段**：页面文本翻译不会更新 AcroForm 字段值
-- **注释**：弹出式注释内容不会被翻译
-
----
-
-## English
-
-### What is this
-
-A PDF visual translation tool that converts English PDFs to Chinese while preserving the original document's visual appearance -- page size, page count, tables, charts, colors, headers, and footers all remain intact.
-
-Unlike conventional translation tools, this uses a **visual overlay** approach: it samples the local background color around each English text line, covers it, and draws Chinese text at the same coordinates. Ideal for reports, research notes, white papers, and disclosure documents where layout fidelity matters.
-
-### How it works
-
-```
-English PDF → Preflight diagnosis → Extract text coordinates → Export batches
-→ LLM translation → Merge cache → Visual overlay rebuild → QA verification → Chinese PDF
-```
-
-### Quick start
-
-```bash
-# Install dependencies
-pip install pymupdf pillow
-
-# 1. Diagnose
-python3 scripts/diagnose_pdf.py --source report.pdf
-
-# 2. Export a translation batch
-python3 scripts/visual_translate_pdf.py \
-  --source report.pdf \
-  --export-batch /tmp/batch.json \
-  --batch-index 0 --batch-size 60
-
-# 3. Translate the batch with any LLM, save as patch JSON
-
-# 4. Merge and rebuild
-python3 scripts/visual_translate_pdf.py \
-  --source report.pdf \
-  --cache /tmp/cache.json \
-  --merge-patch /tmp/patch.json
-
-python3 scripts/visual_translate_pdf.py \
-  --source report.pdf \
-  --output /tmp/output-zh.pdf \
-  --cache /tmp/cache.json
-```
-
-### Key features
-
-- **Non-destructive**: original PDF serves as the visual base layer
-- **LLM-first translation**: exports compact batches for AI translation, not machine translation
-- **File-backed state**: translation cache, glossary, and batch files persist on disk
-- **Smart preservation**: auto-detects brand names, tickers, and product names to keep in English
-- **Visual QA**: comparison renders and text-box previews before delivery
-- **Batch workflow**: handles large PDFs by translating in manageable chunks
-
-### Limitations
-
-- Overlay mode: the hidden text layer remains in English (copy/search shows English)
-- Scanned PDFs require OCR before use
-- Form field values and annotation contents are not translated
-
-## License
+## 许可证
 
 MIT

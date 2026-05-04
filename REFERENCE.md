@@ -1,62 +1,64 @@
-# PDF Visual Translation Reference
+# PDF 视觉翻译高级参考
 
-This reference collects advanced routes for difficult PDFs. Keep `SKILL.md` as the default workflow; use this file only when diagnosis or QA shows a special case.
+[English version](REFERENCE.en.md)
 
-## Preflight Decision Table
+这份文档收集难处理 PDF 的补救路线。日常使用优先看 `README.md` 和 `SKILL.md`；只有当诊断或 QA 暴露出特殊问题时，再查这里。
 
-| Signal | Meaning | Recommended Action |
+## 预检决策表
+
+| 信号 | 含义 | 建议动作 |
 |---|---|---|
-| Very low extractable text | Scanned or image-heavy PDF | OCR first, then rerun diagnosis |
-| Password required | Text and rendering blocked | Ask for password or decrypted PDF |
-| Form widgets detected | AcroForm fields may hold visible English | Inspect form values separately |
-| Annotations detected | Popups/comments may remain English | Extract and translate annotations if needed |
-| Rotated pages detected | Coordinates may need extra QA | Render box previews for those pages |
-| Mixed page sizes | QA pages must cover each size | Include each size in comparison renders |
-| Many tiny boxes | Text extraction is fragmented | Use exact cache overrides for affected lines |
+| 可提取文本密度很低 | 扫描件或图片型 PDF | 先 OCR，再重新诊断 |
+| 需要密码 | 文本提取和渲染可能被阻止 | 请用户提供密码或解密后的 PDF |
+| 检测到表单组件 | 可见英文可能存在于 AcroForm 字段中 | 单独检查表单字段值 |
+| 检测到注释 | 弹窗、批注或评论可能仍是英文 | 必要时单独提取并翻译注释 |
+| 检测到旋转页 | 坐标映射风险更高 | 对这些页面渲染文本框预览 |
+| 页面尺寸混杂 | QA 页面必须覆盖每种尺寸 | 对每种尺寸选择样张渲染对比 |
+| 大量碎片化小文本框 | 文本抽取被切碎 | 对受影响行使用精确缓存覆盖 |
 
-## OCR Route
+## OCR 路线
 
-For scanned PDFs, create a text layer before using the visual translation workflow.
+扫描件需要先生成文本层，再走视觉翻译流程。
 
-Preferred command when available:
+优先命令：
 
 ```bash
 ocrmypdf --deskew --rotate-pages input.pdf ocr-output.pdf
 ```
 
-Fallback route:
+备选路线：
 
 ```bash
 pdftoppm -png -r 300 input.pdf page
 tesseract page-1.png page-1 -l eng pdf
 ```
 
-After OCR, rerun:
+OCR 后重新诊断：
 
 ```bash
 python3 scripts/diagnose_pdf.py --source ocr-output.pdf
 python3 scripts/visual_translate_pdf.py --inspect --source ocr-output.pdf
 ```
 
-Continue only when text density is reasonable and box previews cover the visible English.
+只有当文本密度合理、文本框预览能覆盖主要可见英文时，才继续后续翻译。
 
-## Extraction Fallbacks
+## 抽取失败时的诊断工具
 
-If PyMuPDF extraction misses text or fragments lines badly, inspect the PDF with another tool before rebuilding.
+如果 PyMuPDF 漏抽文本或把句子切得很碎，可以用其他工具辅助判断 PDF 结构。
 
-Bounding-box XML:
+导出带坐标 XML：
 
 ```bash
 pdftotext -bbox-layout input.pdf bbox.xml
 ```
 
-Layout text:
+导出版面文本：
 
 ```bash
 pdftotext -layout input.pdf layout.txt
 ```
 
-Structural table inspection:
+检查表格结构：
 
 ```python
 import pdfplumber
@@ -67,55 +69,55 @@ with pdfplumber.open("input.pdf") as pdf:
     print(page.extract_tables())
 ```
 
-These fallback tools are diagnostic. The normal rebuild still uses `visual_translate_pdf.py` unless a new extraction adapter is written.
+这些工具只用于诊断。正常重建仍使用 `visual_translate_pdf.py`，除非后续专门写新的抽取适配器。
 
-## PDF Repair
+## PDF 修复
 
-If a PDF fails to open, renders inconsistently, or has broken object structure:
+如果 PDF 无法打开、渲染不稳定，或对象结构损坏：
 
 ```bash
 qpdf --check input.pdf
 qpdf input.pdf repaired.pdf
 ```
 
-Then diagnose and translate `repaired.pdf`.
+然后对 `repaired.pdf` 重新诊断和翻译。
 
-## Forms And Annotations
+## 表单与注释
 
-Overlay translation edits page appearance. It does not rewrite:
+页面覆盖翻译只改变页面外观，不会自动改写：
 
-- AcroForm field values.
-- Annotation popup contents.
-- Embedded file attachments.
-- Hidden metadata.
+- AcroForm 字段值
+- 注释弹窗内容
+- 嵌入附件
+- 隐藏元数据
 
-When these matter, extract them separately, translate them, and either update the PDF structure or tell the user what remains unchanged.
+如果这些内容对交付很重要，需要单独提取、翻译，并决定是更新 PDF 结构还是在交付说明里明确标注未处理范围。
 
-## Text-Box Preview Rules
+## 文本框预览规则
 
-Use `render_text_box_preview.py` before translating many batches.
+批量翻译前，先用 `render_text_box_preview.py` 检查代表性页面。
 
-- Orange boxes should cover text that still needs cache entries.
-- Green boxes should match exact glossary entries or cache translations.
-- Missing boxes usually mean OCR or another extraction strategy is needed.
-- Boxes that cut across chart graphics or table borders need final manual QA.
-- Very short boxes may require shorter Chinese cache overrides.
+- 橙色框应覆盖仍需翻译的可见英文。
+- 绿色框应对应已有术语表或缓存翻译。
+- 重要文字没有框，通常说明需要 OCR 或换抽取策略。
+- 穿过图表、表格边线的框，需要最终人工 QA。
+- 很短的小框可能需要更短的中文缓存覆盖。
 
-## QA Page Selection
+## QA 页面选择
 
-Always include:
+至少覆盖这些页面：
 
-- Cover or opening page.
-- First dense prose page.
-- Representative table pages, especially colored headers or heatmaps.
-- Representative chart or figure pages.
-- First and last legal, appendix, disclosure, or footnote-heavy pages.
-- Any rotated or unusual-size pages reported by diagnosis.
+- 封面或开篇页
+- 第一页密集正文
+- 有代表性的表格页，尤其是彩色表头、热力图或数字密集页
+- 有代表性的图表或插图页
+- 第一页和最后一页法律、附录、披露或脚注密集页
+- 诊断中提示的旋转页或特殊尺寸页
 
-## Delivery Notes
+## 交付说明
 
-When delivering an overlay-translated PDF, say whether:
+交付覆盖翻译 PDF 时，应该说明：
 
-- The visible output is Chinese.
-- The hidden/searchable text layer may still contain English.
-- Any scanned pages, form fields, or annotations were excluded or handled separately.
+- 可视输出是否已经是中文。
+- 隐藏文本层或搜索/复制结果是否仍可能包含英文。
+- 扫描页、表单字段、注释或附件是否被排除，或者是否已单独处理。
