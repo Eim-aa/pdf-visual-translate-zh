@@ -1,69 +1,79 @@
-# PDF Translation QA
+# PDF 翻译 QA 检查清单
 
-## Preflight Checks
+[English version](pdf-translation-qa.en.md)
 
-- Run `scripts/diagnose_pdf.py` before translation. If it reports low text density, OCR first.
-- Check whether the PDF is encrypted, has form widgets, has annotations, contains rotated pages, or mixes page sizes.
-- Render `scripts/render_text_box_preview.py` on representative pages before translating many batches.
-- Include cover, dense prose, table, chart, and legal/disclosure pages in the final comparison render.
+## 预检
 
-## Common Failure Modes
+- 翻译前运行 `scripts/diagnose_pdf.py`。如果文本密度很低，先 OCR。
+- 检查 PDF 是否加密，是否包含表单组件、注释、旋转页或混合页面尺寸。
+- 大批量翻译前，对代表性页面运行 `scripts/render_text_box_preview.py`。
+- 最终对照渲染至少覆盖封面、密集正文、表格、图表和法律/披露页。
 
-- White rectangles cover blue table headers: use sampled local background fill, not fixed white redaction.
-- Chinese is unreadably tiny: add exact/manual shorter translations for those lines.
-- Latin letters are spaced out: switch to a different CJK-capable font such as Arial Unicode, PingFang, Noto Sans CJK, or Source Han Sans.
-- Legal/disclosure pages remain English: they often contain long paragraphs not covered by glossary; export missing jobs, translate them with document context, and manually fix repeated boilerplate.
-- Product or technical names are hallucinated: add exact glossary entries for the specific names and codes in the current PDF.
-- Text extraction contains control characters or broken Japanese/Chinese names: skip or manually replace those lines.
-- Copy/search still shows English: overlay mode preserves the original text layer. Explain this to the user or use a clean-text rebuild workflow.
-- Translation reads like literal MT: go back to the exported jobs, read the surrounding page text, and rewrite the cache entries in natural Chinese while keeping numbers and labels concise.
-- Output PDF has zero translated lines: source is likely scanned/image-only — run `--inspect` and OCR the source first.
-- Dark text becomes invisible on a dark cell: the contrast fallback only flips white-on-light to black. If you hit dark-on-dark, add an exact glossary entry that pairs the source with a translation prefixed by a unicode marker, or post-edit by hand.
-- Form-field values remain English: page overlay translation does not edit AcroForm field values; inspect form widgets separately.
-- Annotation popups remain English: page overlay translation does not rewrite annotation contents.
-- Rotated page text is misplaced: preview text boxes and include those pages in final QA.
+## 常见失败模式
 
-## Large-PDF Strategy
+- 白色矩形盖住蓝色表头：应使用局部背景色采样，而不是固定白色遮盖。
+- 中文小到不可读：为对应行写更短的精确译文或手动缓存覆盖。
+- 拉丁字母被拉开：换用更合适的 CJK 字体，例如 Arial Unicode、PingFang、Noto Sans CJK 或 Source Han Sans。
+- 法律/披露页仍是英文：这些页通常长段落很多，术语表覆盖不到；导出缺失项，结合上下文翻译，再手动修正重复样板文本。
+- 产品名或技术名被幻译：把具体名称和代码加入精确术语表。
+- 文本抽取出现控制字符或损坏的日韩中文名：跳过或手动替换这些行。
+- 复制/搜索仍显示英文：覆盖模式保留原始文本层，需要向用户说明，或改用干净文本层重建方案。
+- 译文像直译机器翻译：回到导出的 jobs，读页面上下文，重写缓存项，让中文自然但保持数字和标签简洁。
+- 输出 PDF 没有任何译文：源文件很可能是扫描件或图片型 PDF，先运行 `--inspect` 并 OCR。
+- 深色单元格上的文字不可见：当前对比度兜底主要处理浅底白字。如果遇到深底深字，添加精确术语或手动后处理。
+- 表单字段值仍是英文：页面覆盖翻译不会修改 AcroForm 字段值，需要单独检查。
+- 注释弹窗仍是英文：页面覆盖翻译不会重写注释内容。
+- 旋转页文字错位：对这些页面预览文本框，并纳入最终 QA。
 
-When the export contains hundreds of unique strings:
+## 大 PDF 策略
 
-- Translate the cache in batches grouped by page range or section, then merge back into one JSON before rebuild.
-- Keep the glossary growing across batches so later batches translate consistently with earlier ones.
-- Always rebuild from the merged cache only — never run rebuild against a partial cache, since the script will fail-closed and write a `.missing.txt`.
+当导出内容包含数百个唯一字符串时：
 
-## Table-Cell Sweep
+- 按页码区间或章节分批翻译缓存，再合并回一个 JSON 后重建。
+- 跨批次持续更新术语表，保证后续批次与前文一致。
+- 只从完整合并后的缓存重建。不要用部分缓存直接重建，因为脚本会 fail closed 并写出 `.missing.txt`。
 
-Tables are the highest-risk surface for over-translation. After rendering, on every dense table page check:
+## 表格单元格扫查
 
-- Company names (e.g. `Apple Inc.`, `Goldman Sachs`) appear in English, not as `苹果公司` / `高盛`, unless the document's convention says otherwise.
-- Tickers and exchange codes (e.g. `AAPL`, `NYSE:MSFT`, `005930.KS`) are untouched.
-- Product / model names (e.g. `iPhone 15`, `Model Y`, `A100`, `GPT-4`) are untouched.
-- Region / country codes (`US`, `EU`, `APAC`, `EMEA`) are untouched unless explicitly translated elsewhere.
-- Header cells like `Rank`, `Symbol`, `Sector`, `Weight` are translated consistently across every table.
+表格是最容易过度翻译的区域。渲染后，每个密集表格页都要检查：
 
-When you find a table cell that should have stayed English: add the source string to the glossary's `keep_as_source` list, delete its entry from the cache (or set value=source), and rerun the rebuild step. Do **not** rely on `--no-auto-preserve` to fix this — that just disables the heuristic globally.
+- 公司名（例如 `Apple Inc.`、`Goldman Sachs`）是否按文档约定保留英文，而不是误译成中文。
+- 股票代码和交易所代码（例如 `AAPL`、`NYSE:MSFT`、`005930.KS`）是否保持不变。
+- 产品或型号名（例如 `iPhone 15`、`Model Y`、`A100`、`GPT-4`）是否保持不变。
+- 区域或国家代码（`US`、`EU`、`APAC`、`EMEA`）是否按文档约定处理。
+- `Rank`、`Symbol`、`Sector`、`Weight` 这类表头是否在所有表格中翻译一致。
 
-## Editing Postprocessing
+如果发现某个表格单元格应该保留英文：把源字符串加入术语表的 `keep_as_source`，删除对应缓存项或把值设为源字符串，然后重新重建。不要依赖 `--no-auto-preserve` 修复这个问题；它只是全局关闭启发式保留。
 
-`postprocess_translation` in the script applies a few generic Argos-era cleanups (Wikipedia archive footnotes, `(英语:...)` tails, etc.). Do **not** add unconditional `replace()` calls for real Chinese words there — they will silently corrupt valid translations across all future PDFs. Document-specific bad terms belong in the glossary's `bad_terms` list (warning only) or `replacements` list (substitution).
+## 后处理编辑
 
-## Suggested Comparison Pages
+脚本中的 `postprocess_translation` 只应放少量通用清理规则，例如早期机器翻译遗留的维基脚注、`(英语:...)` 尾巴等。不要在这里添加针对真实中文词的无条件 `replace()`，否则会悄悄污染未来所有 PDF 的有效译文。
 
-Render the cover or opening page, one or two dense text pages, two dense table pages if present, one chart/figure page if present, and the first and last appendix/legal/disclaimer pages if present.
+文档特定的坏词应放入术语表的 `bad_terms`（只警告）或 `replacements`（替换）列表。
 
-## Box Preview Review
+## 建议对照页
 
-When reviewing `text_boxes_pXX.png`:
+最终至少渲染这些页面做对照：
 
-- Orange boxes should cover all visible English text that needs translation.
-- Important text with no box means extraction missed it; consider OCR or manual handling.
-- Many tiny boxes inside one sentence may lead to choppy translation; use exact cache overrides for affected lines.
-- Boxes crossing table borders or chart graphics need careful final QA.
-- Green boxes should correspond to glossary or cache entries already translated or intentionally preserved.
+- 封面或开篇页
+- 一到两页密集正文
+- 两页密集表格页（如果存在）
+- 一页图表或插图页（如果存在）
+- 第一页和最后一页附录、法律、免责声明或披露页
 
-## Bad-Term Sweep
+## 文本框预览检查
 
-Search the generated translation cache and output text for obvious artifacts. If these appear, fix the cache with the LLM and rerun the renderer:
+检查 `text_boxes_pXX.png` 时：
+
+- 橙色框应该覆盖所有需要翻译的可见英文。
+- 重要文字没有框，说明抽取遗漏，需要考虑 OCR 或人工处理。
+- 一个句子被切成许多小框，可能导致译文割裂，需要使用精确缓存覆盖。
+- 跨越表格边线或图表元素的框，需要最终人工 QA。
+- 绿色框应对应已经翻译或有意保留的术语表/缓存项。
+
+## 坏词扫查
+
+搜索翻译缓存和输出文本，查找明显异常。如果出现这些词，修正缓存并重新渲染：
 
 ```text
 流行音乐节
