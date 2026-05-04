@@ -1,0 +1,12 @@
+{
+  "_comment": "Copy this template per document. 'exact' overrides translations for specific source strings (key=English, value=Chinese). 'keep_as_source' is a shortcut: any string here is treated as exact[s]=s, i.e. preserved as English in the output. 'replacements' applies post-translation string substitutions [from, to]. 'bad_terms' is a sweep list — any cache entry containing one of these prints a warning. The seeded bad_terms below are generic Argos-MT artifacts, safe to keep across documents; add document-specific terms as you find them.",
+  "exact": {},
+  "keep_as_source": [],
+  "replacements": [],
+  "bad_terms": [
+    "互联网档案馆",
+    "中文(简体)",
+    "英语:",
+    "第三、第三"
+  ]
+}
