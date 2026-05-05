@@ -1,33 +1,65 @@
 # PDF 视觉翻译中文工具
 
-**面向中文用户的英文 PDF 版式保真翻译工具：把英文报告、研报、白皮书、披露文件等转换为中文 PDF，同时尽量保持页面尺寸、页数、表格、图表、配色和版面结构不变。**
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Agent Skill](https://img.shields.io/badge/Agent%20Skill-Claude%20%2F%20Codex-6f42c1)](SKILL.md)
+[![Made for Chinese readers](https://img.shields.io/badge/%E4%B8%AD%E6%96%87%E7%94%A8%E6%88%B7-%E4%BC%98%E5%85%88-red)](README.md)
 
-[English README](README.en.md) | [高级参考](REFERENCE.md) | [QA 检查清单](references/pdf-translation-qa.md)
+**把英文 PDF 翻成中文，同时尽量保留原来的页面、表格、图表、颜色、页眉页脚和版面结构。**
+
+适合金融研报、行业报告、白皮书、披露文件、合同、类 PPT PDF 等“内容要中文，版式不能乱”的材料。
+
+[English README](README.en.md) | [高级参考](REFERENCE.md) | [QA 检查清单](references/pdf-translation-qa.md) | [Skill 使用说明](SKILL.md)
 
 ---
 
-## 这是什么
+## 为什么会需要它
 
-这是一个 PDF 视觉翻译工作流。它不尝试把 PDF 重新排版成一个全新的文档，而是在原 PDF 的视觉层上工作：提取英文文本和坐标，采样局部背景色覆盖原文，再把简洁中文绘制回相同位置。
+很多 PDF 翻译工具能翻文本，但一遇到表格、图表、页眉页脚、脚注和多栏报告，版式就容易被打散。这个项目走的是另一条路线：
 
-它适合这类材料：
+- 不把 PDF 重排成新文档，而是在原页面坐标上做中文视觉覆盖。
+- 不绑定某一个翻译模型，任何能输出 JSON 的 LLM 都可以接入。
+- 不依赖一次性长上下文，长文档可以分批翻译、缓存、恢复和复查。
+- 不只输出 PDF，还会生成页面渲染对照图，方便交付前做视觉 QA。
 
-- 金融研报、行业报告、公司公告、披露文件
-- 带大量表格、图表、页眉页脚和脚注的 PDF
-- 需要中文可读性，但又不能破坏原版式的资料
-- 需要用 LLM 分批翻译，并保留术语表、缓存和 QA 记录的大型 PDF
+一句话：它更像一个“PDF 中文交付工作流”，不是普通在线翻译器。
 
-## 设计取舍
+## 30 秒判断
 
-这个项目优先保证“看起来像原 PDF 的中文版本”，不是优先生成一个干净、可搜索、可复制的中文文本层。
+| 你的材料或目标 | 是否适合 | 建议 |
+|---|---:|---|
+| 英文 PDF 可以选中文本，且希望保留原排版 | 很适合 | 直接使用本项目 |
+| 研报、公告、白皮书、合同、图表密集 PDF | 很适合 | 先跑诊断，再分批翻译 |
+| 扫描件或纯图片 PDF | 暂不直接适合 | 先 OCR，再使用本项目 |
+| 必须复制和搜索中文文本层 | 需要额外处理 | 本项目优先可视中文，不保证隐藏文本层变中文 |
+| 只想把文字导出成 Markdown | 不太适合 | 用普通 PDF 文本抽取工具更轻 |
 
-- **版式保真**：页数、页面尺寸、表格、图表、颜色和页眉页脚尽量保持不变。
-- **视觉覆盖**：原英文通常仍在底层文本层中，复制或搜索时可能看到英文。
-- **LLM 优先**：脚本负责导出批次、合并缓存和重建 PDF；翻译本身交给你选择的 LLM。
-- **文件化状态**：翻译缓存、术语表、批次文件和 QA 输出都落到磁盘，适合长文档反复迭代。
-- **术语保护**：品牌名、股票代码、产品名、数据源、URL、邮箱、数字和短代码默认倾向保留。
+## 核心亮点
 
-## 工作流程
+- **版式优先**：尽量保持页数、页面尺寸、图表、表格、配色、页眉页脚和页面几何结构。
+- **分批翻译**：导出紧凑 batch，让 LLM 逐批翻译，降低长文档失败率。
+- **缓存可恢复**：翻译状态写入 JSON，失败后可以继续，不必重来。
+- **术语保护**：品牌名、股票代码、产品名、数据来源、URL、邮箱、数字和短代码默认倾向保留。
+- **视觉 QA**：生成对照渲染图，方便检查残留英文、白块、字号、表格和图表页。
+- **可作为 Skill 使用**：适配 Claude/Codex 一类智能体，把复杂 PDF 翻译流程变成可复用工作流。
+
+## 一分钟开始
+
+```bash
+git clone https://github.com/Eim-aa/pdf-visual-translate-zh.git
+cd pdf-visual-translate-zh
+python3 -m pip install -r requirements.txt
+```
+
+先诊断 PDF：
+
+```bash
+python3 scripts/diagnose_pdf.py --source your-report.pdf
+```
+
+如果诊断显示文本密度很低，通常说明 PDF 是扫描件或图片型 PDF，需要先 OCR。
+
+## 标准工作流
 
 ```text
 英文 PDF
@@ -41,32 +73,7 @@
   -> 中文 PDF
 ```
 
-## 安装
-
-建议使用 Python 3.10 或更新版本。
-
-```bash
-pip install -r requirements.txt
-```
-
-当前核心依赖：
-
-```text
-pymupdf
-pillow
-```
-
-## 快速开始
-
-### 1. 诊断 PDF
-
-```bash
-python3 scripts/diagnose_pdf.py --source your-report.pdf
-```
-
-如果诊断显示文本密度很低，通常说明 PDF 是扫描件或图片型 PDF，需要先 OCR。
-
-### 2. 准备术语表和缓存
+### 1. 准备术语表和缓存
 
 ```bash
 WORK="/tmp/pdf-visual-translate-zh"
@@ -74,7 +81,7 @@ mkdir -p "$WORK"
 cp references/glossary-template.json "$WORK/glossary.json"
 ```
 
-### 3. 导出第一个翻译批次
+### 2. 导出第一个翻译批次
 
 ```bash
 python3 scripts/visual_translate_pdf.py \
@@ -87,7 +94,7 @@ python3 scripts/visual_translate_pdf.py \
   --context-chars 1000
 ```
 
-### 4. 用 LLM 翻译批次
+### 3. 用 LLM 翻译批次
 
 把批次里的 `items` 翻译成 patch JSON。键必须保持英文原文完全一致，值写中文译文：
 
@@ -97,7 +104,7 @@ python3 scripts/visual_translate_pdf.py \
 }
 ```
 
-### 5. 合并翻译补丁
+### 4. 合并翻译补丁
 
 ```bash
 python3 scripts/visual_translate_pdf.py \
@@ -108,7 +115,7 @@ python3 scripts/visual_translate_pdf.py \
 
 继续用 `--batch-index 0` 导出下一批。脚本会跳过已经有翻译的缓存项，所以索引 `0` 表示“下一批未翻译内容”。
 
-### 6. 重建中文 PDF
+### 5. 重建中文 PDF
 
 ```bash
 python3 scripts/visual_translate_pdf.py \
@@ -121,6 +128,23 @@ python3 scripts/visual_translate_pdf.py \
 ```
 
 `--render-dir` 会输出对照渲染图，建议在交付前检查封面、正文页、密集表格页、图表页和法律/披露页。
+
+## 作为 Agent Skill 安装
+
+这个仓库可以直接作为 Claude/Codex 一类智能体的 PDF 翻译 Skill 使用。
+
+| 环境 | 推荐安装位置 | 示例 |
+|---|---|---|
+| Claude Code | `~/.claude/skills/pdf-visual-translate-zh-enhanced` | `cp -R . ~/.claude/skills/pdf-visual-translate-zh-enhanced` |
+| Codex | `$CODEX_HOME/skills/pdf-visual-translate-zh-enhanced` 或 `~/.codex/skills/pdf-visual-translate-zh-enhanced` | `cp -R . ~/.codex/skills/pdf-visual-translate-zh-enhanced` |
+
+安装后可以这样对智能体说：
+
+```text
+使用 pdf-visual-translate-zh，把 /path/to/report.pdf 翻译成中文 PDF。
+优先保持原 PDF 的页数、表格、图表、颜色和页面结构。
+翻译过程使用分批缓存，并在交付前输出 QA 对照图。
+```
 
 ## 项目结构
 
@@ -156,17 +180,6 @@ pdf-visual-translate-zh/
 | `scripts/visual_translate_pdf.py --output` | 根据缓存重建中文覆盖 PDF |
 | `scripts/render_text_box_preview.py` | 渲染文本框预览图，检查哪些文字会被覆盖和翻译 |
 
-## 作为 Skill 使用
-
-这个仓库也可以作为 Claude/Codex 一类智能体的 PDF 翻译 Skill 使用。把整个文件夹放到对应的 skills 目录后，按 `SKILL.md` 的工作流执行即可。
-
-示例：
-
-```bash
-mkdir -p ~/.claude/skills/pdf-visual-translate-zh-enhanced
-cp -r . ~/.claude/skills/pdf-visual-translate-zh-enhanced/
-```
-
 ## 常见限制
 
 - **隐藏文本层仍可能是英文**：可视输出是中文，但复制和搜索可能仍命中英文原文。
@@ -174,6 +187,17 @@ cp -r . ~/.claude/skills/pdf-visual-translate-zh-enhanced/
 - **表单字段不会自动改写**：AcroForm 字段值需要单独检查。
 - **注释内容不会自动翻译**：弹出式注释、批注和附件元数据不属于页面文本覆盖范围。
 - **长文本可能需要人工压缩**：中文必须能放回原坐标，密集表格和脚注尤其需要简短译文。
+
+## 路线图
+
+- 增加可公开演示的 before/after 示例 PDF 和渲染图。
+- 增加一条命令完成“导出批次 -> 合并补丁 -> 重建 -> QA”的编排脚本。
+- 探索 OCR 后处理路线，让扫描件也能进入同一工作流。
+- 探索可搜索中文文本层重建，减少隐藏英文文本层带来的限制。
+
+## 适合收藏的人
+
+如果你经常处理英文研报、行业报告、上市公司公告、白皮书、合同或图表密集 PDF，这个项目可以作为一个可复用的中文交付工作流收藏起来。
 
 ## 许可证
 

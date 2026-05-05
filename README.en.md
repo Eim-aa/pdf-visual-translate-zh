@@ -1,27 +1,65 @@
 # PDF Visual Translate ZH
 
-**A visually faithful English-to-Chinese PDF translation workflow that preserves layout, tables, charts, colors, headers, footers, page count, and page geometry as much as possible.**
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Agent Skill](https://img.shields.io/badge/Agent%20Skill-Claude%20%2F%20Codex-6f42c1)](SKILL.en.md)
+[![Made for Chinese readers](https://img.shields.io/badge/Chinese%20readers-first-red)](README.md)
 
-[中文说明](README.md) | [Advanced Reference](REFERENCE.en.md) | [QA Checklist](references/pdf-translation-qa.en.md)
+**Translate English PDFs into Chinese while preserving the original page geometry, tables, charts, colors, headers, footers, and visual layout as much as possible.**
+
+Built for research reports, industry reports, white papers, disclosures, contracts, and slide-like PDFs where the Chinese output must still look like the source document.
+
+[中文说明](README.md) | [Advanced Reference](REFERENCE.en.md) | [QA Checklist](references/pdf-translation-qa.en.md) | [Skill Guide](SKILL.en.md)
 
 ---
 
-## What This Is
+## Why This Exists
 
-This project translates English PDFs into Chinese while preserving the original visual layout. Instead of rebuilding the document from scratch, it extracts text positions, samples the local background, covers the original English, and draws concise Chinese text back into the same coordinates.
+Many PDF translation tools translate text but break layouts when reports contain dense tables, charts, headers, footers, footnotes, or multi-column pages. This project takes a different path:
 
-It is designed for reports, research notes, white papers, disclosures, and data-heavy PDFs where layout fidelity matters.
+- It does not rebuild the PDF from scratch. It overlays Chinese text back onto the original page coordinates.
+- It does not lock you into one translation model. Any LLM that can return JSON patches can be used.
+- It does not rely on one huge chat context. Long documents can be translated in batches, cached, resumed, and reviewed.
+- It does not stop at outputting a PDF. It can render comparison images for visual QA before delivery.
 
-## Core Trade-Off
+In short, this is a Chinese PDF delivery workflow, not a generic online translator.
 
-This workflow prioritizes visual fidelity over a clean searchable Chinese text layer.
+## 30-Second Fit Check
 
-- **Visual overlay**: the visible output is Chinese, but the hidden text layer may still contain English.
-- **LLM-first translation**: scripts export compact batches and merge translation patches; translation itself can be handled by any LLM.
-- **File-backed state**: cache, glossary, batches, and QA artifacts live on disk.
-- **Smart preservation**: proper nouns, tickers, product names, datasets, URLs, emails, numbers, and short codes are preserved unless context says otherwise.
+| Your source or goal | Fit | Recommendation |
+|---|---:|---|
+| Selectable English PDF and layout must stay stable | Strong fit | Use this project directly |
+| Research reports, filings, white papers, contracts, chart-heavy PDFs | Strong fit | Diagnose first, then translate in batches |
+| Scanned or image-only PDFs | Not directly | OCR first, then use this workflow |
+| Searchable/copyable Chinese text layer is mandatory | Needs extra work | This project prioritizes visible Chinese output |
+| You only need Markdown text extraction | Weak fit | Use a lighter PDF extraction tool |
 
-## Workflow
+## Highlights
+
+- **Layout first**: preserve page count, dimensions, tables, charts, colors, headers, footers, and geometry as much as possible.
+- **Batch translation**: export compact batches for LLM translation to reduce long-document failure risk.
+- **Resumable cache**: translation state is stored in JSON, so failed runs can continue.
+- **Glossary protection**: brand names, tickers, product names, datasets, URLs, emails, numbers, and short codes are preserved by default.
+- **Visual QA**: render comparison pages to catch leftover English, white blocks, tiny text, table issues, and chart-page regressions.
+- **Agent-skill ready**: works as a reusable Claude/Codex-style skill for repeatable PDF translation workflows.
+
+## Start in One Minute
+
+```bash
+git clone https://github.com/Eim-aa/pdf-visual-translate-zh.git
+cd pdf-visual-translate-zh
+python3 -m pip install -r requirements.txt
+```
+
+Diagnose the source PDF first:
+
+```bash
+python3 scripts/diagnose_pdf.py --source your-report.pdf
+```
+
+If text density is very low, the PDF is likely scanned or image-only. OCR it first.
+
+## Standard Workflow
 
 ```text
 English PDF
@@ -35,25 +73,7 @@ English PDF
   -> Chinese PDF
 ```
 
-## Installation
-
-Python 3.10 or newer is recommended.
-
-```bash
-pip install -r requirements.txt
-```
-
-## Quick Start
-
-### 1. Diagnose
-
-```bash
-python3 scripts/diagnose_pdf.py --source your-report.pdf
-```
-
-If text density is very low, OCR the PDF first.
-
-### 2. Prepare Working Files
+### 1. Prepare Glossary and Cache
 
 ```bash
 WORK="/tmp/pdf-visual-translate-zh"
@@ -61,7 +81,7 @@ mkdir -p "$WORK"
 cp references/glossary-template.json "$WORK/glossary.json"
 ```
 
-### 3. Export a Batch
+### 2. Export the First Translation Batch
 
 ```bash
 python3 scripts/visual_translate_pdf.py \
@@ -74,9 +94,9 @@ python3 scripts/visual_translate_pdf.py \
   --context-chars 1000
 ```
 
-### 4. Translate With an LLM
+### 3. Translate With an LLM
 
-Translate the batch `items` into patch JSON. Keep each source string exactly as the key:
+Translate the batch `items` into patch JSON. Keep every source string exactly as the key:
 
 ```json
 {
@@ -84,7 +104,7 @@ Translate the batch `items` into patch JSON. Keep each source string exactly as 
 }
 ```
 
-### 5. Merge the Patch
+### 4. Merge the Patch
 
 ```bash
 python3 scripts/visual_translate_pdf.py \
@@ -95,7 +115,7 @@ python3 scripts/visual_translate_pdf.py \
 
 Repeat export with `--batch-index 0`. The script skips translated cache entries, so index `0` means "next untranslated batch."
 
-### 6. Rebuild
+### 5. Rebuild the Chinese PDF
 
 ```bash
 python3 scripts/visual_translate_pdf.py \
@@ -107,7 +127,24 @@ python3 scripts/visual_translate_pdf.py \
   --compare-pages 1,4,8
 ```
 
-Review the comparison renders before delivery.
+Review the rendered comparisons before delivery, especially covers, dense tables, chart pages, and legal/disclosure pages.
+
+## Install as an Agent Skill
+
+This repository can be installed as a reusable PDF translation skill for Claude/Codex-style agents.
+
+| Environment | Recommended location | Example |
+|---|---|---|
+| Claude Code | `~/.claude/skills/pdf-visual-translate-zh-enhanced` | `cp -R . ~/.claude/skills/pdf-visual-translate-zh-enhanced` |
+| Codex | `$CODEX_HOME/skills/pdf-visual-translate-zh-enhanced` or `~/.codex/skills/pdf-visual-translate-zh-enhanced` | `cp -R . ~/.codex/skills/pdf-visual-translate-zh-enhanced` |
+
+Example agent request:
+
+```text
+Use pdf-visual-translate-zh to translate /path/to/report.pdf into a Chinese PDF.
+Prioritize preserving page count, tables, charts, colors, and page geometry.
+Use batched cache files and render QA comparison images before delivery.
+```
 
 ## Repository Layout
 
@@ -132,13 +169,35 @@ pdf-visual-translate-zh/
     └── glossary-example.json
 ```
 
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `scripts/diagnose_pdf.py` | Preflight text density, scanned pages, encryption, forms, annotations, rotation, and page-size issues |
+| `scripts/visual_translate_pdf.py --inspect` | Inspect translation-facing PDF metadata |
+| `scripts/visual_translate_pdf.py --export-batch` | Export compact batches for LLM translation |
+| `scripts/visual_translate_pdf.py --merge-patch` | Merge one patch JSON into the translation cache |
+| `scripts/visual_translate_pdf.py --output` | Rebuild the Chinese visual-overlay PDF from the cache |
+| `scripts/render_text_box_preview.py` | Render text-box previews to inspect what will be covered and translated |
+
 ## Limitations
 
-- The hidden/searchable text layer may still contain English.
-- Scanned PDFs require OCR first.
-- AcroForm field values are not rewritten by the page overlay.
-- Annotation popup contents are not translated.
-- Dense tables and footnotes may need shorter manual translations.
+- **Hidden text may still be English**: visible output is Chinese, but copy/search may still hit the English source layer.
+- **Scanned PDFs require OCR**: image-only PDFs need a text layer first.
+- **Form fields are not rewritten automatically**: AcroForm values require separate checks.
+- **Annotation popups are not translated automatically**: comments and attachment metadata are outside page-text overlay.
+- **Dense text may need manual compression**: Chinese must fit back into the original coordinates.
+
+## Roadmap
+
+- Add public before/after demo PDFs and rendered comparison images.
+- Add a one-command orchestration script for batch export, patch merge, rebuild, and QA.
+- Explore an OCR preprocessing path for scanned PDFs.
+- Explore rebuilding a searchable Chinese text layer to reduce the hidden-English limitation.
+
+## Who Should Star This
+
+If you regularly handle English research reports, industry reports, company filings, white papers, contracts, or chart-heavy PDFs for Chinese readers, this repo is meant to be a reusable delivery workflow.
 
 ## License
 
