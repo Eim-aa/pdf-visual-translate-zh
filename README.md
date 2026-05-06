@@ -1,13 +1,13 @@
-# PDF 视觉翻译中文工具
+# PDF Visual Translate · 英文 PDF 版式保真中文翻译 Skill
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Agent Skill](https://img.shields.io/badge/Agent%20Skill-Claude%20%2F%20Codex-6f42c1)](SKILL.md)
 [![Made for Chinese readers](https://img.shields.io/badge/%E4%B8%AD%E6%96%87%E7%94%A8%E6%88%B7-%E4%BC%98%E5%85%88-red)](README.md)
 
-**把英文 PDF 翻成中文，同时尽量保留原来的页面、表格、图表、颜色、页眉页脚和版面结构。**
+**一个适配 Claude Code / Codex 等 Agent 环境的英文 PDF 中文翻译 Skill，用于把研报、公告、合同、白皮书和图表密集 PDF 转成更接近原版式的中文交付件。**
 
-适合金融研报、行业报告、白皮书、披露文件、合同、类 PPT PDF 等“内容要中文，版式不能乱”的材料。
+它优先保留页面尺寸、页数、表格、图表、配色、页眉页脚和页面结构，适合“内容要中文，版式不能乱”的材料。
 
 [English README](README.en.md) | [高级参考](REFERENCE.md) | [QA 检查清单](references/pdf-translation-qa.md) | [Skill 使用说明](SKILL.md)
 
@@ -135,13 +135,13 @@ python3 scripts/visual_translate_pdf.py \
 
 | 环境 | 推荐安装位置 | 示例 |
 |---|---|---|
-| Claude Code | `~/.claude/skills/pdf-visual-translate-zh-enhanced` | `cp -R . ~/.claude/skills/pdf-visual-translate-zh-enhanced` |
-| Codex | `$CODEX_HOME/skills/pdf-visual-translate-zh-enhanced` 或 `~/.codex/skills/pdf-visual-translate-zh-enhanced` | `cp -R . ~/.codex/skills/pdf-visual-translate-zh-enhanced` |
+| Claude Code | `~/.claude/skills/pdf-visual-translate-zh-skill` | `git clone https://github.com/Eim-aa/pdf-visual-translate-zh.git ~/.claude/skills/pdf-visual-translate-zh-skill` |
+| Codex | `$CODEX_HOME/skills/pdf-visual-translate-zh-skill` 或 `~/.codex/skills/pdf-visual-translate-zh-skill` | `git clone https://github.com/Eim-aa/pdf-visual-translate-zh.git ~/.codex/skills/pdf-visual-translate-zh-skill` |
 
 安装后可以这样对智能体说：
 
 ```text
-使用 pdf-visual-translate-zh，把 /path/to/report.pdf 翻译成中文 PDF。
+使用 pdf-visual-translate-zh-skill，把 /path/to/report.pdf 翻译成中文 PDF。
 优先保持原 PDF 的页数、表格、图表、颜色和页面结构。
 翻译过程使用分批缓存，并在交付前输出 QA 对照图。
 ```

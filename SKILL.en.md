@@ -1,9 +1,9 @@
 ---
-name: pdf-visual-translate-zh-enhanced
-description: Create visually faithful Chinese translations of extractable-text English PDFs while preserving page count, page size, tables, charts, colors, headers, footers, and layout. Use for report, deck, disclosure, contract, and data-heavy PDFs where visual fidelity matters more than a clean searchable Chinese text layer.
+name: pdf-visual-translate-zh-skill
+description: Layout-preserving English-to-Chinese PDF translation Skill for extractable-text PDFs. Create Chinese delivery PDFs while preserving page count, page size, tables, charts, colors, headers, footers, and layout. Use for research reports, filings, white papers, contracts, and chart-heavy PDFs where visual fidelity matters more than a clean searchable Chinese text layer.
 ---
 
-# PDF Visual Translate ZH Enhanced
+# PDF Visual Translate · Layout-Preserving English-to-Chinese PDF Skill
 
 [中文版本](SKILL.md)
 

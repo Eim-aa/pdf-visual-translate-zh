@@ -1,11 +1,11 @@
-# PDF Visual Translate ZH
+# PDF Visual Translate · Layout-Preserving English-to-Chinese PDF Skill
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Agent Skill](https://img.shields.io/badge/Agent%20Skill-Claude%20%2F%20Codex-6f42c1)](SKILL.en.md)
 [![Made for Chinese readers](https://img.shields.io/badge/Chinese%20readers-first-red)](README.md)
 
-**Translate English PDFs into Chinese while preserving the original page geometry, tables, charts, colors, headers, footers, and visual layout as much as possible.**
+**A Claude/Codex-ready Agent Skill for translating English PDFs into Chinese delivery PDFs while preserving page geometry, tables, charts, colors, headers, footers, and visual layout as much as possible.**
 
 Built for research reports, industry reports, white papers, disclosures, contracts, and slide-like PDFs where the Chinese output must still look like the source document.
 
@@ -135,13 +135,13 @@ This repository can be installed as a reusable PDF translation skill for Claude/
 
 | Environment | Recommended location | Example |
 |---|---|---|
-| Claude Code | `~/.claude/skills/pdf-visual-translate-zh-enhanced` | `cp -R . ~/.claude/skills/pdf-visual-translate-zh-enhanced` |
-| Codex | `$CODEX_HOME/skills/pdf-visual-translate-zh-enhanced` or `~/.codex/skills/pdf-visual-translate-zh-enhanced` | `cp -R . ~/.codex/skills/pdf-visual-translate-zh-enhanced` |
+| Claude Code | `~/.claude/skills/pdf-visual-translate-zh-skill` | `git clone https://github.com/Eim-aa/pdf-visual-translate-zh.git ~/.claude/skills/pdf-visual-translate-zh-skill` |
+| Codex | `$CODEX_HOME/skills/pdf-visual-translate-zh-skill` or `~/.codex/skills/pdf-visual-translate-zh-skill` | `git clone https://github.com/Eim-aa/pdf-visual-translate-zh.git ~/.codex/skills/pdf-visual-translate-zh-skill` |
 
 Example agent request:
 
 ```text
-Use pdf-visual-translate-zh to translate /path/to/report.pdf into a Chinese PDF.
+Use pdf-visual-translate-zh-skill to translate /path/to/report.pdf into a Chinese PDF.
 Prioritize preserving page count, tables, charts, colors, and page geometry.
 Use batched cache files and render QA comparison images before delivery.
 ```

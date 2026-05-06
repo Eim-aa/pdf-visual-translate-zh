@@ -1,9 +1,9 @@
 ---
-name: pdf-visual-translate-zh-enhanced
-description: 为可提取文本的英文 PDF 创建版式保真的中文译本，尽量保留页数、页面尺寸、表格、图表、颜色、页眉页脚和整体布局。适用于报告、演示稿、披露文件、合同和数据密集型 PDF；目标是可视中文交付，而不是干净的中文可搜索文本层。
+name: pdf-visual-translate-zh-skill
+description: 英文 PDF 版式保真中文翻译 Skill：为可提取文本的英文 PDF 创建中文交付件，尽量保留页数、页面尺寸、表格、图表、颜色、页眉页脚和整体布局。适用于研报、公告、白皮书、合同和图表密集型 PDF；目标是可视中文交付，而不是干净的中文可搜索文本层。
 ---
 
-# PDF 视觉翻译中文 Skill
+# PDF Visual Translate · 英文 PDF 版式保真中文翻译 Skill
 
 [English version](SKILL.en.md)
 
